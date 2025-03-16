@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorblind Spectrum Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .canvas-container {
+            position: relative;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #spectrumCanvas {
+            background: linear-gradient(to right, 
+                red,
+                orange,
+                yellow,
+                green,
+                blue,
+                indigo,
+                violet
+            );
+        }
+
+        #drawingCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .instructions {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Colorblind Spectrum Test</h1>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <p>1. Look at the color spectrum below</p>
+            <p>2. Draw vertical lines where you see distinct color changes in the spectrum</p>
+            <p>3. Click "Analyze" when you're done to get your results</p>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="spectrumCanvas"></canvas>
+            <canvas id="drawingCanvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="clearBtn">Clear Lines</button>
+            <button id="analyzeBtn">Analyze</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const spectrumCanvas = document.getElementById('spectrumCanvas');
+            const drawingCanvas = document.getElementById('drawingCanvas');
+            const clearBtn = document.getElementById('clearBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const results = document.getElementById('results');
+
+            // Set canvas sizes
+            const canvasWidth = 600;
+            const canvasHeight = 100;
+            spectrumCanvas.width = canvasWidth;
+            spectrumCanvas.height = canvasHeight;
+            drawingCanvas.width = canvasWidth;
+            drawingCanvas.height = canvasHeight;
+
+            const ctx = drawingCanvas.getContext('2d');
+            let isDrawing = false;
+            let lines = [];
+
+            // Drawing settings
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+
+            // Drawing functions
+            function startDrawing(e) {
+                isDrawing = true;
+                const x = e.clientX - drawingCanvas.getBoundingClientRect().left;
+                lines.push({ x: x });
+                drawLine(x);
+            }
+
+            function drawLine(x) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+                ctx.stroke();
+            }
+
+            function stopDrawing() {
+                isDrawing = false;
+            }
+
+            // Event listeners
+            drawingCanvas.addEventListener('mousedown', startDrawing);
+            drawingCanvas.addEventListener('mouseup', stopDrawing);
+            drawingCanvas.addEventListener('mouseleave', stopDrawing);
+
+            clearBtn.addEventListener('click', () => {
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                lines = [];
+            });
+
+            analyzeBtn.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ lines: lines }),
+                    });
+                    const data = await response.json();
+                    results.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    console.error('Error:', error);
+                    results.textContent = 'Error analyzing results';
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
