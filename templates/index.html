@@ -34,24 +34,30 @@
             margin: 20px 0;
             border: 1px solid #ddd;
             border-radius: 5px;
+            width: 100%;
+            overflow: hidden;
         }
 
         #spectrumCanvas {
             background: linear-gradient(to right, 
-                red,
-                orange,
-                yellow,
-                green,
-                blue,
-                indigo,
-                violet
+                red 0%,
+                orange 16.67%,
+                yellow 33.33%,
+                green 50%,
+                blue 66.67%,
+                indigo 83.33%,
+                violet 100%
             );
+            width: 100%;
+            height: 100px;
         }
 
         #drawingCanvas {
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100px;
         }
 
         .controls {
@@ -115,13 +121,23 @@
             const analyzeBtn = document.getElementById('analyzeBtn');
             const results = document.getElementById('results');
 
-            // Set canvas sizes
-            const canvasWidth = 600;
-            const canvasHeight = 100;
-            spectrumCanvas.width = canvasWidth;
-            spectrumCanvas.height = canvasHeight;
-            drawingCanvas.width = canvasWidth;
-            drawingCanvas.height = canvasHeight;
+            // Function to update canvas sizes
+            function updateCanvasSizes() {
+                const container = spectrumCanvas.parentElement;
+                const width = container.clientWidth;
+                const height = 100;
+
+                spectrumCanvas.width = width;
+                spectrumCanvas.height = height;
+                drawingCanvas.width = width;
+                drawingCanvas.height = height;
+            }
+
+            // Initial size setup
+            updateCanvasSizes();
+
+            // Update sizes on window resize
+            window.addEventListener('resize', updateCanvasSizes);
 
             const ctx = drawingCanvas.getContext('2d');
             let isDrawing = false;
@@ -135,7 +151,8 @@
             // Drawing functions
             function startDrawing(e) {
                 isDrawing = true;
-                const x = e.clientX - drawingCanvas.getBoundingClientRect().left;
+                const rect = drawingCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
                 lines.push({ x: x });
                 drawLine(x);
             }
@@ -143,7 +160,7 @@
             function drawLine(x) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvasHeight);
+                ctx.lineTo(x, drawingCanvas.height);
                 ctx.stroke();
             }
 
@@ -157,7 +174,7 @@
             drawingCanvas.addEventListener('mouseleave', stopDrawing);
 
             clearBtn.addEventListener('click', () => {
-                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
                 lines = [];
             });
 
