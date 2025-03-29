@@ -4,14 +4,15 @@ import cv2
 class ColorAnalyzer:
     def __init__(self):
         # Define the ideal ROYGBIV boundaries (normalized to 0-1 range)
-        self.ideal_boundaries = np.array([
-            0.143,  # Red-Orange
-            0.286,  # Orange-Yellow
-            0.429,  # Yellow-Green
-            0.571,  # Green-Blue
-            0.714,  # Blue-Indigo
-            0.857   # Indigo-Violet
-        ])
+        self.ideal_boundaries = [
+            {"position": 0.143, "color": "Red-Orange"},
+            {"position": 0.286, "color": "Orange-Yellow"},
+            {"position": 0.429, "color": "Yellow-Green"},
+            {"position": 0.571, "color": "Green-Blue"},
+            {"position": 0.714, "color": "Blue-Indigo"},
+            {"position": 0.857, "color": "Indigo-Violet"}
+        ]
+        self.ideal_positions = np.array([b["position"] for b in self.ideal_boundaries])
     
     def analyze_spectrum(self, user_lines):
         """
@@ -28,24 +29,26 @@ class ColorAnalyzer:
             return {
                 "score": 0,
                 "message": "No lines detected. Please draw lines where you see color changes.",
-                "type": "unknown"
+                "type": "unknown",
+                "ideal_boundaries": self.ideal_boundaries
             }
 
         # Extract x coordinates and normalize them
         user_positions = np.array([line['x'] for line in user_lines]) / 600.0  # Canvas width is 600px
         
-        if len(user_positions) != len(self.ideal_boundaries):
+        if len(user_positions) != len(self.ideal_positions):
             return {
                 "score": 0,
-                "message": f"Expected {len(self.ideal_boundaries)} lines, but got {len(user_positions)}. Please mark all color transitions.",
-                "type": "incomplete"
+                "message": f"Expected {len(self.ideal_positions)} lines, but got {len(user_positions)}. Please mark all color transitions.",
+                "type": "incomplete",
+                "ideal_boundaries": self.ideal_boundaries
             }
 
         # Sort positions to match with ideal boundaries
         user_positions.sort()
         
         # Calculate mean squared error between user positions and ideal boundaries
-        mse = np.mean((user_positions - self.ideal_boundaries) ** 2)
+        mse = np.mean((user_positions - self.ideal_positions) ** 2)
         
         # Convert MSE to a 0-100 score (0 = worst, 100 = perfect)
         score = max(0, 100 * (1 - mse * 10))
@@ -56,7 +59,8 @@ class ColorAnalyzer:
         return {
             "score": round(score, 2),
             "message": self._get_score_message(score),
-            "type": color_blindness_type
+            "type": color_blindness_type,
+            "ideal_boundaries": self.ideal_boundaries
         }
     
     def _determine_color_blindness_type(self, user_positions):
@@ -64,7 +68,7 @@ class ColorAnalyzer:
         Determine potential color blindness type based on line positions.
         """
         # Calculate deviations for each boundary
-        deviations = user_positions - self.ideal_boundaries
+        deviations = user_positions - self.ideal_positions
         
         # Define thresholds for different types of color blindness
         red_green_threshold = 0.1

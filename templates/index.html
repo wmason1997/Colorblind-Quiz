@@ -60,6 +60,16 @@
             height: 100px;
         }
 
+        #idealCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            pointer-events: none;
+            display: none;
+        }
+
         .controls {
             margin: 20px 0;
             text-align: center;
@@ -80,12 +90,45 @@
             background-color: #0056b3;
         }
 
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
         .instructions {
             margin: 20px 0;
             padding: 15px;
             background-color: #f8f9fa;
             border-radius: 5px;
             line-height: 1.6;
+        }
+
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .result-item {
+            margin: 10px 0;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .color-label {
+            position: absolute;
+            top: 5px;
+            transform: translateX(-50%);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -103,22 +146,26 @@
         <div class="canvas-container">
             <canvas id="spectrumCanvas"></canvas>
             <canvas id="drawingCanvas"></canvas>
+            <canvas id="idealCanvas"></canvas>
         </div>
 
         <div class="controls">
             <button id="clearBtn">Clear Lines</button>
             <button id="analyzeBtn">Analyze</button>
+            <button id="showIdealBtn" disabled>Show Ideal Boundaries</button>
         </div>
 
-        <div id="results"></div>
+        <div id="results" class="results"></div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const spectrumCanvas = document.getElementById('spectrumCanvas');
             const drawingCanvas = document.getElementById('drawingCanvas');
+            const idealCanvas = document.getElementById('idealCanvas');
             const clearBtn = document.getElementById('clearBtn');
             const analyzeBtn = document.getElementById('analyzeBtn');
+            const showIdealBtn = document.getElementById('showIdealBtn');
             const results = document.getElementById('results');
 
             // Function to update canvas sizes
@@ -131,6 +178,8 @@
                 spectrumCanvas.height = height;
                 drawingCanvas.width = width;
                 drawingCanvas.height = height;
+                idealCanvas.width = width;
+                idealCanvas.height = height;
             }
 
             // Initial size setup
@@ -140,16 +189,28 @@
             window.addEventListener('resize', updateCanvasSizes);
 
             const ctx = drawingCanvas.getContext('2d');
+            const idealCtx = idealCanvas.getContext('2d');
             let isDrawing = false;
             let lines = [];
+            let idealBoundaries = null;
+            const MAX_LINES = 6;
 
             // Drawing settings
-            ctx.strokeStyle = 'white';
+            ctx.strokeStyle = 'black';
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
 
+            // Ideal boundaries drawing settings
+            idealCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            idealCtx.lineWidth = 2;
+            idealCtx.lineCap = 'round';
+
             // Drawing functions
             function startDrawing(e) {
+                if (lines.length >= MAX_LINES) {
+                    alert(`You can only draw ${MAX_LINES} lines. Please analyze your current lines or clear them to start over.`);
+                    return;
+                }
                 isDrawing = true;
                 const rect = drawingCanvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -168,6 +229,46 @@
                 isDrawing = false;
             }
 
+            function formatResults(data) {
+                return `
+                    <div class="result-item">
+                        <span class="result-label">Score:</span> ${data.score}/100
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Message:</span> ${data.message}
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Type:</span> ${data.type.replace('_', ' ')}
+                    </div>
+                `;
+            }
+
+            function drawIdealBoundaries() {
+                if (!idealBoundaries) return;
+                
+                // Clear previous labels
+                document.querySelectorAll('.color-label').forEach(label => label.remove());
+                
+                idealCtx.clearRect(0, 0, idealCanvas.width, idealCanvas.height);
+                idealCanvas.style.display = 'block';
+                
+                // Draw lines
+                idealBoundaries.forEach((boundary) => {
+                    const x = boundary.position * idealCanvas.width;
+                    idealCtx.beginPath();
+                    idealCtx.moveTo(x, 0);
+                    idealCtx.lineTo(x, idealCanvas.height);
+                    idealCtx.stroke();
+
+                    // Add color labels
+                    const label = document.createElement('div');
+                    label.className = 'color-label';
+                    label.textContent = boundary.color;
+                    label.style.left = `${x}px`;
+                    idealCanvas.parentElement.appendChild(label);
+                });
+            }
+
             // Event listeners
             drawingCanvas.addEventListener('mousedown', startDrawing);
             drawingCanvas.addEventListener('mouseup', stopDrawing);
@@ -175,7 +276,12 @@
 
             clearBtn.addEventListener('click', () => {
                 ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                idealCanvas.style.display = 'none';
                 lines = [];
+                showIdealBtn.disabled = true;
+                results.style.display = 'none';
+                // Remove color labels
+                document.querySelectorAll('.color-label').forEach(label => label.remove());
             });
 
             analyzeBtn.addEventListener('click', async () => {
@@ -188,11 +294,19 @@
                         body: JSON.stringify({ lines: lines }),
                     });
                     const data = await response.json();
-                    results.textContent = JSON.stringify(data, null, 2);
+                    results.innerHTML = formatResults(data);
+                    results.style.display = 'block';
+                    showIdealBtn.disabled = false;
+                    idealBoundaries = data.ideal_boundaries;
                 } catch (error) {
                     console.error('Error:', error);
                     results.textContent = 'Error analyzing results';
+                    results.style.display = 'block';
                 }
+            });
+
+            showIdealBtn.addEventListener('click', () => {
+                drawIdealBoundaries();
             });
         });
     </script>
