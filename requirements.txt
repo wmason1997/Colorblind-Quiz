@@ -4,12 +4,14 @@ click==8.1.8
 ecdsa==0.19.1
 exceptiongroup==1.2.2
 fastapi==0.104.1
+gunicorn==23.0.0
 h11==0.14.0
 idna==3.10
 Jinja2==3.1.2
 MarkupSafe==3.0.2
 numpy==1.26.2
 opencv-python==4.8.1.78
+packaging==24.2
 Pillow==10.1.0
 pyasn1==0.6.1
 pydantic==2.10.6
