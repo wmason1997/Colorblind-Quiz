@@ -139,8 +139,8 @@
         <div class="instructions">
             <h3>Instructions:</h3>
             <p>1. Look at the color spectrum below</p>
-            <p>2. Draw vertical lines where you see distinct color changes in the spectrum</p>
-            <p>3. Click "Analyze" when you're done to get your results</p>
+            <p>2. Draw 6 vertical lines where you see distinct color changes in the spectrum (ROYGBIV)</p>
+            <p>3. Click "Analyze" after placing all 6 lines to get your results</p>
         </div>
 
         <div class="canvas-container">
@@ -150,8 +150,9 @@
         </div>
 
         <div class="controls">
+            <button id="undoBtn" disabled>Undo Last Line</button>
             <button id="clearBtn">Clear Lines</button>
-            <button id="analyzeBtn">Analyze</button>
+            <button id="analyzeBtn" disabled>Analyze</button>
             <button id="showIdealBtn" disabled>Show Ideal Boundaries</button>
         </div>
 
@@ -163,6 +164,7 @@
             const spectrumCanvas = document.getElementById('spectrumCanvas');
             const drawingCanvas = document.getElementById('drawingCanvas');
             const idealCanvas = document.getElementById('idealCanvas');
+            const undoBtn = document.getElementById('undoBtn');
             const clearBtn = document.getElementById('clearBtn');
             const analyzeBtn = document.getElementById('analyzeBtn');
             const showIdealBtn = document.getElementById('showIdealBtn');
@@ -205,6 +207,20 @@
             idealCtx.lineWidth = 2;
             idealCtx.lineCap = 'round';
 
+            // Update button states based on number of lines
+            function updateAnalyzeButtonState() {
+                analyzeBtn.disabled = lines.length < MAX_LINES;
+            }
+
+            function updateUndoButtonState() {
+                undoBtn.disabled = lines.length === 0;
+            }
+
+            function redrawLines() {
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                lines.forEach(line => drawLine(line.x));
+            }
+
             // Drawing functions
             function startDrawing(e) {
                 if (lines.length >= MAX_LINES) {
@@ -216,6 +232,8 @@
                 const x = e.clientX - rect.left;
                 lines.push({ x: x });
                 drawLine(x);
+                updateAnalyzeButtonState();
+                updateUndoButtonState();
             }
 
             function drawLine(x) {
@@ -274,12 +292,23 @@
             drawingCanvas.addEventListener('mouseup', stopDrawing);
             drawingCanvas.addEventListener('mouseleave', stopDrawing);
 
+            undoBtn.addEventListener('click', () => {
+                if (lines.length > 0) {
+                    lines.pop();
+                    redrawLines();
+                    updateAnalyzeButtonState();
+                    updateUndoButtonState();
+                }
+            });
+
             clearBtn.addEventListener('click', () => {
                 ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
                 idealCanvas.style.display = 'none';
                 lines = [];
                 showIdealBtn.disabled = true;
                 results.style.display = 'none';
+                updateAnalyzeButtonState();
+                updateUndoButtonState();
                 // Remove color labels
                 document.querySelectorAll('.color-label').forEach(label => label.remove());
             });
